@@ -77,19 +77,14 @@ def eval(env_fn,  num_games: int = 100, render_mode: str | None = None,  **env_k
         f"\nStarting evaluation on {str(env.metadata['name'])} (num_games={num_games}, render_mode={render_mode})"
     )
 
-    try:
-        policy_arch = max(
-            glob.glob(f"{env.metadata['name']}archer*.zip"), key=os.path.getctime
-        )
 
-        #policy_knight = max(glob.glob(f"{env.metadata['name']}knight*.zip"), key=os.path.getctime)
+    policy_arch = max(glob.glob(f"{env.metadata['name']}archer*.zip"), key=os.path.getctime)
 
-    except ValueError:
-        print("Policy not found.")
-        exit(0)
+    policy_knight = max(glob.glob(f"{env.metadata['name']}knight*.zip"), key=os.path.getctime)
+
 
     model_arch = PPO.load(policy_arch)
-   # model_knight = PPO.load(policy_knight)
+    model_knight = PPO.load(policy_knight)
 
     rewards = {agent: 0 for agent in env.possible_agents}
 
@@ -134,21 +129,20 @@ def eval(env_fn,  num_games: int = 100, render_mode: str | None = None,  **env_k
 env_fn = knights_archers_zombies_v10
 
 
+
+
 # Set vector_state to false in order to use visual observations (significantly longer training time)
-env_kwargs1 = dict(max_cycles=100, max_zombies=4,  spawn_rate =  0 , num_archers = 2, num_knights = 0, vector_state=True)
-env_kwargs2 = dict(max_cycles=100, max_zombies=4, spawn_rate =  20 ,num_archers = 2, num_knights = 0, vector_state=True)
-env_kwargs3 = dict(max_cycles=600, max_zombies=20,  max_arrows=10, spawn_rate =  1
+env_kwargs1 = dict(max_cycles=600, max_zombies=10,  max_arrows=14, spawn_rate =  0 , num_archers = 2, num_knights = 0, vector_state=True)
+env_kwargs2 = dict(max_cycles=600, max_zombies=5,  max_arrows=12, spawn_rate =  20 ,num_archers = 0, num_knights = 2, vector_state=True)
 
+#N value 2knight + 2sword  + 2arch + 10arrw + 10zmb = 26 rows per observation
+env_kwargs3 = dict(max_cycles=100, max_zombies=10,  max_arrows=10, spawn_rate =  10 ,num_archers = 2, num_knights = 2, vector_state=True)
 
-
-
-0 ,num_archers = 2, num_knights = 0, vector_state=True)
-
-#train(env_fn, "knight", steps=200_000, seed=666, **env_kwargs1)
-#train(env_fn, "pong_training", "archer", steps=200_000, seed=420, **env_kwargs3)
-
+train(env_fn, "pong_training", "knight", steps=600_000, seed=112, **env_kwargs2)
+#train(env_fn, "pong_training", "archer", steps=200_000, seed=420, **env_kwargs1)
+#print("Evaluation")
 #eval(env_fn, num_games=10, render_mode=None, **env_kwargs3)
 
 
 
-eval(env_fn, num_games=1, render_mode="human", **env_kwargs3)
+eval(env_fn, num_games=1, render_mode="human", **env_kwargs1)
