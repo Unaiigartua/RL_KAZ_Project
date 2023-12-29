@@ -3,16 +3,14 @@ import glob
 import os
 import time
 import supersuit as ss
-from stable_baselines3 import PPO, DQN
+from stable_baselines3 import PPO
 from stable_baselines3.ppo import CnnPolicy, MlpPolicy
-from stable_baselines3.common.vec_env import  VecMonitor
+from stable_baselines3.common.vec_env import VecMonitor
+
+#Entrenar con PPO con una Convolutional modo imagenes.
 
 
-
-
-#ENTRENAR CON OTRA ALTERNATIVA A PPO DENTRO DE STABLEbASELINE3
-
-def train(env_fn, route2, route,  steps: int = 10_000, seed: int | None = 0, **env_kwargs):
+def train(env_fn, route2, route, steps: int = 10_000, seed: int | None = 0, **env_kwargs):
     # Train a single model to play as each agent in an AEC environment
     env = env_fn.parallel_env(**env_kwargs)
 
@@ -38,33 +36,16 @@ def train(env_fn, route2, route,  steps: int = 10_000, seed: int | None = 0, **e
     log_dir = f"logs/{env.unwrapped.metadata.get('name')}{route2}_{time.strftime('%Y%m%d-%H%M%S')}/"
     os.makedirs(log_dir, exist_ok=True)
 
+    # Wrap the environment with Monitor for logging
     env = VecMonitor(env, log_dir)
 
-
-    learning_rate = 0.1
-    gamma = 0.6
-    epsilon = 0.05
-    buffer_size = 10000
-    batch_size = 256
-    target_network_update_freq = 500
-
-
-    # Neural network architecture
-    policy_kwargs = dict(
-        net_arch=[64, 64]  # Adjust as needed
-    )
-
-    # Create and train the DQN model
-    model = DQN(
-        "MlpPolicy",
+    # Use a CNN policy if the observation space is visual
+    model = PPO(
+        CnnPolicy if visual_observation else MlpPolicy,
         env,
-        learning_rate=learning_rate,
-        gamma=gamma,
-        exploration_fraction=epsilon,
-        buffer_size=buffer_size,
-        batch_size=batch_size,
-        target_update_interval=target_network_update_freq,
-        verbose=1  # Set to 1 for training progress output
+        verbose=3,
+        batch_size=256,
+        tensorboard_log=log_dir,
     )
 
     model.learn(total_timesteps=steps)
@@ -78,7 +59,7 @@ def train(env_fn, route2, route,  steps: int = 10_000, seed: int | None = 0, **e
     env.close()
 
 
-def eval(env_fn,  num_games: int = 100, render_mode: str | None = None,  **env_kwargs, ):
+def eval(env_fn, num_games: int = 100, render_mode: str | None = None, **env_kwargs, ):
     # Evaluate a trained agent vs a random agent
     env = env_fn.env(render_mode=render_mode, **env_kwargs)
 
@@ -94,11 +75,9 @@ def eval(env_fn,  num_games: int = 100, render_mode: str | None = None,  **env_k
         f"\nStarting evaluation on {str(env.metadata['name'])} (num_games={num_games}, render_mode={render_mode})"
     )
 
-
     policy_arch = max(glob.glob(f"{env.metadata['name']}archer*.zip"), key=os.path.getctime)
 
     policy_knight = max(glob.glob(f"{env.metadata['name']}knight*.zip"), key=os.path.getctime)
-
 
     model_arch = PPO.load(policy_arch)
     model_knight = PPO.load(policy_knight)
@@ -141,24 +120,20 @@ def eval(env_fn,  num_games: int = 100, render_mode: str | None = None,  **env_k
     return avg_reward
 
 
-
-
 env_fn = knights_archers_zombies_v10
 
+env_kwargs1 = dict(max_cycles=600, max_zombies=10, max_arrows=14, spawn_rate=0, num_archers=2, num_knights=0,
+                   vector_state=True)
+env_kwargs2 = dict(max_cycles=600, max_zombies=7, max_arrows=12, spawn_rate=20, num_archers=0, num_knights=4,
+                   vector_state=False)
+
+env_kwargs3 = dict(max_cycles=100, max_zombies=10, max_arrows=10, spawn_rate=10, num_archers=2, num_knights=2,
+                   vector_state=True)
+
+train(env_fn, "pong_training", "knight", steps=1_000_000, seed=117, **env_kwargs2)
+# train(env_fn, "pong_training", "archer", steps=200_000, seed=420, **env_kwargs1)
+# print("Evaluation")
+eval(env_fn, num_games=10, render_mode=None, **env_kwargs2)
 
 
-
-# Set vector_state to false in order to use visual observations (significantly longer training time)
-env_kwargs1 = dict(max_cycles=600, max_zombies=10,  max_arrows=14, spawn_rate =  0 , num_archers = 2, num_knights = 0, vector_state=True)
-env_kwargs2 = dict(max_cycles=600, max_zombies=7,  max_arrows=12, spawn_rate =  20 ,num_archers = 0, num_knights = 4, vector_state=True)
-
-#N value 2knight + 2sword  + 2arch + 10arrw + 10zmb = 26 rows per observation
-env_kwargs3 = dict(max_cycles=100, max_zombies=10,  max_arrows=10, spawn_rate =  10 ,num_archers = 2, num_knights = 2, vector_state=True)
-
-train(env_fn, "pong_training", "knight", steps=300_000, seed=117, **env_kwargs2)
-#train(env_fn, "pong_training", "archer", steps=200_000, seed=420, **env_kwargs1)
-#print("Evaluation")
-#eval(env_fn, num_games=10, render_mode=None, **env_kwargs3)
-
-
-#eval(env_fn, num_games=1, render_mode="human", **env_kwargs1)
+# eval(env_fn, num_games=1, render_mode="human", **env_kwargs1)
