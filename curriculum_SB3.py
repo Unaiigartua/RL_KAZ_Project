@@ -5,6 +5,7 @@ from stable_baselines3.common.callbacks import CheckpointCallback
 import os
 import time
 import supersuit as ss
+
 from stable_baselines3 import PPO, DQN
 from stable_baselines3.ppo import CnnPolicy, MlpPolicy
 from stable_baselines3.common.vec_env import  VecMonitor
@@ -51,15 +52,24 @@ def train_visual(env_fn, iter, type, steps, seed=None, **env_kwargs):
             verbose=3,
             batch_size=256,
             tensorboard_log=log_dir,
+            learning_rate=0.05,
+
         )
-        model.learn(total_timesteps=steps)
 
     else:
+
+        if iter == 1: lr = 0.01
+        elif iter == 2: lr = 0.005
+        elif iter == 3: lr = 0.001
+
+
         model = PPO.load(f"model_{type}_v{iter}")
         model.set_env(env)
+        model.learning_rate = lr
         model.tensorboard_log = log_dir
-        model.learn(total_timesteps=steps, reset_num_timesteps= False)
 
+
+    model.learn(total_timesteps=steps)
     iter+=1
 
     model.save(f"model_knight_v{iter}")
@@ -134,13 +144,13 @@ def eval(env_fn, num_games: int = 100, render_mode: str | None = None, **env_kwa
 
 env_kwargs_knights =[dict(max_cycles=600, max_zombies=4,  max_arrows= 0, spawn_rate =  30 ,num_archers = 0, num_knights = 4, vector_state=False),
                 dict(max_cycles=500, max_zombies=6,  max_arrows= 0, spawn_rate =  20 ,num_archers = 0, num_knights = 4, vector_state=False),
-                dict(max_cycles=400, max_zombies=8,  max_arrows= 0, spawn_rate =  10 ,num_archers = 0, num_knights = 3, vector_state=False),
-                dict(max_cycles=300, max_zombies=10,  max_arrows= 0, spawn_rate =  8 ,num_archers = 0, num_knights = 2, vector_state=False)]
+                dict(max_cycles=400, max_zombies=8,  max_arrows= 0, spawn_rate =  10 ,num_archers = 0, num_knights = 4, vector_state=False),
+                dict(max_cycles=300, max_zombies=10,  max_arrows= 0, spawn_rate =  8 ,num_archers = 0, num_knights = 4, vector_state=False)]
 
-env_kwargs_archers =[dict(max_cycles=600, max_zombies=10,  max_arrows= 20, spawn_rate =  30 ,num_archers = 5, num_knights = 0, vector_state=False),
-                dict(max_cycles=500, max_zombies=8,  max_arrows= 20, spawn_rate =  20 ,num_archers = 4, num_knights = 0, vector_state=False),
+env_kwargs_archers =[dict(max_cycles=600, max_zombies=10,  max_arrows= 20, spawn_rate =  30 ,num_archers = 3, num_knights = 0, vector_state=False),
+                dict(max_cycles=500, max_zombies=8,  max_arrows= 20, spawn_rate =  20 ,num_archers = 3, num_knights = 0, vector_state=False),
                 dict(max_cycles=400, max_zombies=6,  max_arrows= 10, spawn_rate =  10 ,num_archers = 3, num_knights = 0, vector_state=False),
-                dict(max_cycles=300, max_zombies=4,  max_arrows= 10, spawn_rate =  8 ,num_archers = 2, num_knights = 0, vector_state=False)]
+                dict(max_cycles=300, max_zombies=4,  max_arrows= 10, spawn_rate =  8 ,num_archers = 3, num_knights = 0, vector_state=False)]
 
 env_kwargs_combined = dict(max_cycles=100, max_zombies=10, max_arrows=10, spawn_rate=10, num_archers=2, num_knights=2,vector_state=False)
 
@@ -148,7 +158,7 @@ env_kwargs_combined = dict(max_cycles=100, max_zombies=10, max_arrows=10, spawn_
 env_fn = knights_archers_zombies_v10
 
 for i in range(4):
-    train_visual(env_fn, i, 'knight', steps=20_000, **env_kwargs_knights[i])
+    train_visual(env_fn, i, 'knight', steps=600_000, **env_kwargs_knights[i])
 
 ''' 
 for i in range(4):
